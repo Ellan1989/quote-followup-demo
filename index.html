@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuoteFollow — AI Quote Follow-up Assistant for ServiceM8</title>
+<style>
+  :root {
+    --bg: #f6f8fb; --card: #ffffff; --line: #e5e9f0; --ink: #0f172a;
+    --ink2: #5b6472; --ink3: #8b93a1; --accent: #2563eb; --accent-soft: #eff4ff;
+    --green: #16a34a; --green-soft: #e8f7ee; --amber: #b45309; --amber-soft: #fdf3e3;
+    --red: #dc2626; --red-soft: #fdecec; --gray-soft: #eef1f5; --violet: #7c3aed; --violet-soft: #f1ecfd;
+    --radius: 12px; --shadow: 0 1px 2px rgba(15,23,42,.05), 0 4px 16px rgba(15,23,42,.05);
+    --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.55; }
+  .app { display: flex; min-height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar { width: 232px; background: #0e1526; color: #c7cdd9; padding: 20px 14px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .logo { display: flex; align-items: center; gap: 9px; padding: 2px 8px 18px; }
+  .logo-mark { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 15px; }
+  .logo-name { color: #fff; font-weight: 700; font-size: 15px; letter-spacing: .2px; }
+  .logo-sub { font-size: 10.5px; color: #7c8698; margin-top: 1px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #aab3c2; font-weight: 500; border: none; background: none; font-size: 13.5px; text-align: left; }
+  .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+  .nav-item:hover { background: #1a2338; color: #e2e7ef; }
+  .nav-item.active { background: var(--accent); color: #fff; }
+  .nav-item .count { margin-left: auto; background: rgba(255,255,255,.14); border-radius: 99px; font-size: 11px; padding: 1px 7px; font-weight: 600; }
+  .nav-item.active .count { background: rgba(255,255,255,.25); }
+  .sidebar-foot { margin-top: auto; padding: 12px 8px 0; border-top: 1px solid #1d2740; }
+  .conn-chip { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9aa4b5; padding: 4px 2px 10px; }
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(22,163,74,.2); }
+  .demo-note { font-size: 11px; color: #66707f; line-height: 1.5; }
+  .demo-note b { color: #8b95a8; }
+  .btn-reset { margin-top: 8px; width: 100%; background: none; border: 1px solid #2a3550; color: #9aa4b5; border-radius: 7px; padding: 5px; font-size: 11.5px; cursor: pointer; }
+  .btn-reset:hover { border-color: #3d4a6b; color: #c7cdd9; }
+
+  /* ---------- Main ---------- */
+  .main { flex: 1; padding: 26px 34px 60px; max-width: 1180px; }
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 16px; }
+  h1 { font-size: 21px; font-weight: 700; letter-spacing: -.2px; }
+  .page-sub { color: var(--ink2); font-size: 13px; margin-top: 3px; }
+
+  /* Cards & stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .stat .num { font-size: 27px; font-weight: 750; letter-spacing: -.5px; }
+  .stat .lbl { font-size: 12.5px; color: var(--ink2); margin-top: 2px; }
+  .stat.amber .num { color: var(--amber); } .stat.blue .num { color: var(--accent); }
+  .stat.green .num { color: var(--green); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .card-head { padding: 15px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .card-title { font-weight: 650; font-size: 14.5px; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2.5px 9px; border-radius: 99px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .b-amber { background: var(--amber-soft); color: var(--amber); }
+  .b-blue { background: var(--accent-soft); color: var(--accent); }
+  .b-green { background: var(--green-soft); color: var(--green); }
+  .b-gray { background: var(--gray-soft); color: var(--ink2); }
+  .b-red { background: var(--red-soft); color: var(--red); }
+  .b-violet { background: var(--violet-soft); color: var(--violet); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink3); font-weight: 600; padding: 11px 14px; border-bottom: 1px solid var(--line); background: #fafbfd; }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { cursor: pointer; transition: background .12s; }
+  tbody tr:hover { background: #f7f9fd; }
+  .job-id { font-family: var(--mono); font-size: 12px; color: var(--ink2); }
+  .client-name { font-weight: 600; }
+  .desc { color: var(--ink2); font-size: 13px; }
+  .money { font-weight: 650; white-space: nowrap; }
+  .money small { color: var(--ink3); font-weight: 500; }
+  .muted { color: var(--ink3); font-size: 12.5px; }
+
+  /* Filters */
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 99px; padding: 5.5px 14px; font-size: 12.5px; font-weight: 550; color: var(--ink2); cursor: pointer; }
+  .chip:hover { border-color: #c9d2e0; }
+  .chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .search { margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 7px 12px; width: 250px; }
+  .search input { border: none; outline: none; font-size: 13px; width: 100%; background: none; color: var(--ink); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 9px; padding: 8.5px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all .12s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: var(--card); border-color: var(--line); color: var(--ink); }
+  .btn-ghost:hover { border-color: #c9d2e0; background: #fafbfd; }
+  .btn-danger { background: var(--card); border-color: var(--line); color: var(--red); }
+  .btn-danger:hover { background: var(--red-soft); border-color: #f3c1c1; }
+  .btn-sm { padding: 5.5px 12px; font-size: 12.5px; border-radius: 8px; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Detail page */
+  .detail-grid { display: grid; grid-template-columns: 1fr 380px; gap: 18px; align-items: start; }
+  .panel { padding: 18px 20px; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; row-gap: 9px; font-size: 13.5px; }
+  .kv dt { color: var(--ink2); } .kv dd { font-weight: 550; }
+  .section-lbl { font-size: 11.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink3); font-weight: 650; margin-bottom: 10px; }
+  .draft-box { width: 100%; min-height: 260px; border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px; font-size: 13.5px; font-family: inherit; line-height: 1.6; color: var(--ink); resize: vertical; outline: none; background: #fdfefe; }
+  .draft-box:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .draft-subject { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; font-weight: 600; margin-bottom: 10px; outline: none; }
+  .draft-subject:focus { border-color: var(--accent); }
+  .generating { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; gap: 12px; color: var(--ink2); background: repeating-linear-gradient(45deg, #fafbfd, #fafbfd 12px, #f4f6fa 12px, #f4f6fa 24px); border: 1px dashed #d4dbe6; border-radius: 10px; }
+  .gen-orb { width: 34px; height: 34px; border-radius: 50%; background: conic-gradient(from 0deg, #2563eb, #7c3aed, #2563eb); animation: spin 1s linear infinite; }
+  .gen-orb::after { content: ""; position: absolute; }
+  .actions-row { display: flex; gap: 9px; margin-top: 14px; flex-wrap: wrap; }
+  .reviewflag { display: flex; gap: 8px; align-items: flex-start; background: var(--amber-soft); border: 1px solid #f0dcbc; color: var(--amber); border-radius: 9px; padding: 10px 13px; font-size: 12.5px; margin-bottom: 12px; }
+  details.raw { margin-top: 14px; }
+  details.raw summary { cursor: pointer; font-size: 12.5px; color: var(--ink2); font-weight: 600; padding: 6px 0; }
+  details.raw pre { background: #0e1526; color: #9fd0a8; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; border-radius: 9px; padding: 14px 16px; overflow-x: auto; }
+  .history-item { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .t { color: var(--ink3); white-space: nowrap; font-size: 11.5px; min-width: 118px; }
+
+  /* Misc */
+  .toast-wrap { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 9px; z-index: 60; }
+  .toast { background: #0e1526; color: #e7ecf3; border-radius: 10px; padding: 11px 16px; font-size: 13px; box-shadow: 0 8px 30px rgba(15,23,42,.35); display: flex; gap: 9px; align-items: center; animation: slideup .25s ease; max-width: 380px; }
+  @keyframes slideup { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .empty { padding: 52px 20px; text-align: center; color: var(--ink3); }
+  .empty .big { font-size: 15px; color: var(--ink2); font-weight: 600; margin-bottom: 4px; }
+  .sync-line { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .sync-line:last-child { border-bottom: none; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer; margin-bottom: 14px; }
+  .modal-mask { position: fixed; inset: 0; background: rgba(10,15,28,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .modal { background: #fff; border-radius: 14px; width: 420px; padding: 24px; box-shadow: 0 24px 80px rgba(15,23,42,.3); }
+  .modal h3 { font-size: 16px; margin-bottom: 6px; }
+  .modal p { color: var(--ink2); font-size: 13px; margin-bottom: 14px; }
+  .modal select, .modal textarea { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; font-size: 13px; margin-bottom: 14px; font-family: inherit; outline: none; }
+  .rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .tone-opt { display: flex; flex-direction: column; gap: 3px; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer; }
+  .tone-opt input { display: none; }
+  .tone-opt .t-name { font-weight: 650; font-size: 13.5px; }
+  .tone-opt .t-desc { font-size: 12px; color: var(--ink2); }
+  .tone-opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .threshold-val { font-size: 22px; font-weight: 750; color: var(--accent); }
+  .excl-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--gray-soft); border-radius: 8px; padding: 6px 11px; font-size: 12.5px; font-weight: 550; color: var(--ink2); margin: 0 6px 6px 0; }
+  .log-row { display: flex; gap: 14px; padding: 11px 4px; border-bottom: 1px dashed var(--line); font-size: 13px; align-items: baseline; }
+  .log-row:last-child { border-bottom: none; }
+  .log-time { color: var(--ink3); font-size: 11.5px; font-family: var(--mono); min-width: 128px; }
+  .log-ev { font-weight: 600; min-width: 150px; }
+  .progress { height: 6px; background: var(--gray-soft); border-radius: 99px; overflow: hidden; margin: 10px 0 6px; }
+  .progress > div { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+  @media (max-width: 1080px) { .stats { grid-template-columns: repeat(2,1fr); } .detail-grid { grid-template-columns: 1fr; } .rules-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">Q</div>
+      <div><div class="logo-name">QuoteFollow</div><div class="logo-sub">AI Quote Follow-up Assistant</div></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot">
+      <div class="conn-chip"><span class="conn-dot" id="connDot"></span><span id="connText">ServiceM8 · Connected</span></div>
+      <div class="demo-note"><b>Demo environment</b> — running on sample data shaped like the live ServiceM8 API. No client data is used.</div>
+      <button class="btn-reset" onclick="resetDemo()">Reset demo data</button>
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<div class="toast-wrap" id="toasts"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ============================================================
+   DATA LAYER — mock connector shaped exactly like the ServiceM8
+   REST API (fields verified against a live trial account,
+   2026-10-23: quote_sent is boolean, unsent stamps are zero-dates,
+   timestamps are account-local time, money fields are strings).
+   ============================================================ */
+const ACCOUNT = { business: "Test Plumbing Co", tz: "Australia/Sydney", threshold: 3, tone: "professional" };
+
+const pad = n => String(n).padStart(2, "0");
+const fmtStamp = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const ago = (days, h = 9, m = 12) => { const t = new Date(Date.now() - days * 864e5); t.setHours(h, m, 0, 0); return t; };
+const ZERO = "0000-00-00 00:00:00";
+
+/* --- ServiceM8-shaped records --- */
+const companies = [
+  { uuid: "c1", name: "Riverside Apartments",      is_individual: 0, address: "14 River Rd, Parramatta NSW" },
+  { uuid: "c2", name: "Greenfield Café",           is_individual: 0, address: "88 George St, Sydney NSW" },
+  { uuid: "c3", name: "O'Connor Residence",        is_individual: 1, address: "7 Wattle Ave, Ryde NSW" },
+  { uuid: "c4", name: "Nguyen Family",             is_individual: 1, address: "23 Peachtree Rd, Auburn NSW" },
+  { uuid: "c5", name: "Harbour View Real Estate",  is_individual: 0, address: "Suite 9, 120 King St, Sydney NSW" },
+  { uuid: "c6", name: "St Clair Public School",    is_individual: 0, address: "2 High St, St Clair NSW" },
+];
+
+const jobs = [
+  { uuid: "j24", generated_job_id: "J.0024", company_uuid: "c1", status: "Quote",       quote_sent: true,  quote_sent_stamp: fmtStamp(ago(6, 9, 42)),  job_description: "Bathroom renovation — leak repair",        work_order_date: ZERO, unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j25", generated_job_id: "J.0025", company_uuid: "c2", status: "Quote",       quote_sent: true,  quote_sent_stamp: fmtStamp(ago(5, 11, 5)),   job_description: "Hot water system replacement",             work_order_date: ZERO, unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j26", generated_job_id: "J.0026", company_uuid: "c3", status: "Quote",       quote_sent: true,  quote_sent_stamp: fmtStamp(ago(3, 14, 30)),  job_description: "Kitchen tap installation",                 work_order_date: ZERO, unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j28", generated_job_id: "J.0028", company_uuid: "c5", status: "Quote",       quote_sent: true,  quote_sent_stamp: fmtStamp(ago(9, 10, 15)),  job_description: "Drain unblocking & CCTV inspection",      work_order_date: ZERO, unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j21", generated_job_id: "J.0021", company_uuid: "c6", status: "Quote",       quote_sent: true,  quote_sent_stamp: fmtStamp(ago(12, 9, 20)),  job_description: "Amenities block repairs — Stage 2",       work_order_date: ZERO, unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j22", generated_job_id: "J.0022", company_uuid: "c3", status: "Quote",       quote_sent: true,  quote_sent_stamp: fmtStamp(ago(15, 13, 45)),  job_description: "Gutter cleaning & minor repairs",         work_order_date: ZERO, unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j19", generated_job_id: "J.0019", company_uuid: "c1", status: "Work Order",  quote_sent: true,  quote_sent_stamp: fmtStamp(ago(18, 9, 0)),   job_description: "Roof leak repair — Level 3",               work_order_date: fmtStamp(ago(2, 10, 5)),  unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j20", generated_job_id: "J.0020", company_uuid: "c2", status: "Unsuccessful",quote_sent: true,  quote_sent_stamp: fmtStamp(ago(21, 15, 30)),  job_description: "Grease trap replacement",                  work_order_date: ZERO, unsuccessful_date: fmtStamp(ago(4, 16, 0)), completion_date: ZERO },
+  { uuid: "j18", generated_job_id: "J.0018", company_uuid: "c5", status: "Completed",   quote_sent: true,  quote_sent_stamp: fmtStamp(ago(26, 9, 10)),   job_description: "Priority plumbing call-out",               work_order_date: fmtStamp(ago(24, 8, 30)), unsuccessful_date: ZERO, completion_date: fmtStamp(ago(23, 15, 0)) },
+  { uuid: "j29", generated_job_id: "J.0029", company_uuid: "c4", status: "Quote",       quote_sent: true,  quote_sent_stamp: ZERO,                          job_description: "Bathroom exhaust fan replacement",        work_order_date: ZERO, unsuccessful_date: ZERO, completion_date: ZERO },
+  { uuid: "j30", generated_job_id: "J.0030", company_uuid: "c2", status: "Quote",       quote_sent: true,  quote_sent_stamp: fmtStamp(ago(8, 9, 55)),   job_description: "Backflow prevention device install",       work_order_date: fmtStamp(ago(1, 11, 0)),  unsuccessful_date: ZERO, completion_date: ZERO },
+];
+
+/* JobMaterials — quantity/amount are strings, tax flag per line (real API shape) */
+const materials = {
+  j24: [ { name: "Supply & install 250L hot water system", quantity: "1.0000", displayed_amount: "1450.0000", displayed_amount_is_tax_inclusive: "0" },
+         { name: "Labour (hours)",                          quantity: "3.0000", displayed_amount: "95.0000",  displayed_amount_is_tax_inclusive: "0" },
+         { name: "Parts & fittings",                        quantity: "1.0000", displayed_amount: "87.5000",  displayed_amount_is_tax_inclusive: "0" } ],
+  j25: [ { name: "Rheem 315L heat pump supply & install",   quantity: "1.0000", displayed_amount: "2450.0000", displayed_amount_is_tax_inclusive: "0" },
+         { name: "Old unit removal & disposal",             quantity: "1.0000", displayed_amount: "180.0000",  displayed_amount_is_tax_inclusive: "0" },
+         { name: "Labour (hours)",                          quantity: "4.0000", displayed_amount: "95.0000",  displayed_amount_is_tax_inclusive: "0" } ],
+  j26: [ { name: "Mixer tap supply & install",              quantity: "1.0000", displayed_amount: "320.0000",  displayed_amount_is_tax_inclusive: "0" },
+         { name: "Labour (hours)",                          quantity: "1.5000", displayed_amount: "95.0000",  displayed_amount_is_tax_inclusive: "0" } ],
+  j28: [ { name: "Electric eel drain clear",               quantity: "1.0000", displayed_amount: "420.0000",  displayed_amount_is_tax_inclusive: "0" },
+         { name: "CCTV inspection & report",                quantity: "1.0000", displayed_amount: "430.0000",  displayed_amount_is_tax_inclusive: "0" } ],
+  j21: [ { name: "Amenities refurbishment — plumbing works",quantity: "1.0000", displayed_amount: "3980.0000", displayed_amount_is_tax_inclusive: "0" },
+         { name: "Fixture replacement (7 basins)",          quantity: "7.0000", displayed_amount: "100.0000",  displayed_amount_is_tax_inclusive: "0" } ],
+  j22: [ { name: "Gutter clean & flush (2-storey)",         quantity: "1.0000", displayed_amount: "380.0000",  displayed_amount_is_tax_inclusive: "0" } ],
+  j29: [ { name: "Exhaust fan supply & install",            quantity: "1.0000", displayed_amount: "385.0000",  displayed_amount_is_tax_inclusive: "0" } ],
+  j30: [ { name: "Backflow device supply & install",        quantity: "1.0000", displayed_amount: "660.0000",  displayed_amount_is_tax_inclusive: "0" },
+         { name: "Annual certification & lodgement",        quantity: "1.0000", displayed_amount: "95.0000",   displayed_amount_is_tax_inclusive: "0" } ],
+};
+
+/* App-level follow-up tasks (state machine per spec §2.2) */
+let tasks, logs, settings, connection;
+function seedState() {
+  settings = { threshold: 3, tone: "professional" };
+  connection = { status: "connected", mode: "Private API Key (read-only)", since: ago(14, 10, 0), lastSync: ago(0, new Date().getHours(), Math.max(0, new Date().getMinutes() - 12)) };
+  const T = (job, status, trigger, extra = {}) => ({ id: "t_" + job.uuid, jobUuid: job.uuid, status, trigger, drafts: [], history: [], ...extra });
+  const J = id => jobs.find(j => j.uuid === id);
+  tasks = [
+    T(J("j24"), "needs_follow_up", "Quote sent 6 days ago · exceeds 3-day threshold · no follow-up recorded"),
+    T(J("j25"), "needs_follow_up", "Quote sent 5 days ago · exceeds 3-day threshold · no follow-up recorded"),
+    T(J("j26"), "needs_follow_up", "Quote sent 3 days ago · threshold reached today · no follow-up recorded"),
+    T(J("j28"), "draft_ready", "Quote sent 9 days ago · draft generated, awaiting review", { drafts: [{ subject: "Following up: Quote J.0028 — Drain unblocking & CCTV inspection", body: "", model: "claude-sonnet-4.5", createdAt: ago(0, 8, 40), edited: false }] }),
+    T(J("j21"), "marked_followed_up", "Quote sent 12 days ago · followed up by Sam W.", { lastFollowedUpAt: ago(1, 11, 20), followedNote: "Called Karen at the school office — she is chasing approval from the dept." }),
+    T(J("j22"), "marked_followed_up", "Quote sent 15 days ago · followed up by Email", { lastFollowedUpAt: ago(2, 9, 5), followedNote: "Sent a short SMS reminder." }),
+    T(J("j19"), "excluded", "Quote accepted — job moved to Work Order (work_order_date set)", { excludedAt: ago(2, 10, 6) }),
+    T(J("j20"), "excluded", "Quote marked Unsuccessful (unsuccessful_date set)", { excludedAt: ago(4, 16, 1) }),
+    T(J("j18"), "excluded", "Job Completed — nothing to follow up", { excludedAt: ago(23, 15, 1) }),
+    T(J("j29"), "needs_review", "Data conflict: quote_sent = true but quote_sent_stamp is a zero-date (\"0000-00-00 00:00:00\")"),
+    T(J("j30"), "needs_review", "Data conflict: status = \"Quote\" but work_order_date is set — needs human check before follow-up"),
+  ];
+  tasks.find(t => t.id === "t_j28").drafts[0].body =
+`Hi Michael,
+
+Just following up on the quote we sent on ${fmtDate(ago(9,10,15))} for the drain unblocking and CCTV inspection at Suite 9, 120 King St (Quote J.0028, $850.00 ex GST).
+
+The CCTV footage showed the blockage is fully cleared, so the quote covers the inspection report your strata insurer asked for.
+
+Is there anything you'd like me to clarify? Happy to send the report through or book any follow-up work at a time that suits.
+
+Kind regards,
+Sam Wilson
+Test Plumbing Co · 02 9000 1234`;
+  logs = [
+    { t: ago(14, 10, 2),  ev: "integration.connected",  detail: "ServiceM8 connected · Private API Key (read-only)" },
+    { t: ago(14, 10, 4),  ev: "sync.completed",         detail: "First sync · 26 jobs, 18 clients fetched" },
+    { t: ago(6, 9, 45),   ev: "task.created",           detail: "J.0024 entered needs_follow_up (threshold exceeded)" },
+    { t: ago(0, 8, 40),   ev: "draft.generated",        detail: "AI draft generated for J.0028 · model claude-sonnet-4.5" },
+    { t: ago(1, 11, 20),  ev: "task.marked_followed_up",detail: "J.0021 marked followed up by Sam W." },
+  ];
+}
+
+/* ---------- persistence ---------- */
+const LS_KEY = "quotefollow_demo_v1";
+// revive "YYYY-MM-DD HH:MM:SS" strings into Date on load
+const reviver = (k, v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v)) ? new Date(v) : v;
+function saveState() {
+  localStorage.setItem(LS_KEY, JSON.stringify({ tasks, logs, settings, connection }));
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    tasks = s.tasks; logs = s.logs; settings = s.settings; connection = s.connection;
+    return true;
+  } catch (e) { return false; }
+}
+function resetDemo() { localStorage.removeItem(LS_KEY); seedState(); saveState(); route("dashboard"); toast("Demo data reset"); }
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $ = sel => document.querySelector(sel);
+const companyOf = j => companies.find(c => c.uuid === j.company_uuid);
+const taskOf = j => tasks.find(t => t.jobUuid === j.uuid);
+const money = v => "A$" + Number(v).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const jobTotal = j => (materials[j.uuid] || []).reduce((s, m) => s + parseFloat(m.quantity) * parseFloat(m.displayed_amount), 0);
+const fmtDate = d => d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const fmtDateTime = d => d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }) + ", " + d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+const parseStamp = s => s && !s.startsWith("0000") ? new Date(s.replace(" ", "T")) : null;
+const daysSince = d => Math.floor((Date.now() - d.getTime()) / 864e5);
+function toast(msg) {
+  const el = document.createElement("div"); el.className = "toast"; el.textContent = msg;
+  $("#toasts").appendChild(el); setTimeout(() => el.remove(), 3200);
+}
+function logEvent(ev, detail) { logs.unshift({ t: new Date(), ev, detail }); saveState(); }
+const STATUS_META = {
+  needs_follow_up:   { label: "Needs follow-up", cls: "b-amber" },
+  draft_ready:       { label: "Draft ready",     cls: "b-blue" },
+  marked_followed_up:{ label: "Followed up",     cls: "b-green" },
+  excluded:          { label: "Excluded",        cls: "b-gray" },
+  needs_review:      { label: "Needs review",    cls: "b-red" },
+};
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+/* ============================================================
+   ROUTER
+   ============================================================ */
+let currentView = "dashboard", currentTask = null, listFilter = "needs_follow_up";
+const NAV = [
+  { id: "dashboard",  label: "Dashboard",         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>' },
+  { id: "list",       label: "Quote Follow-ups",  icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.3"/><circle cx="3.5" cy="12" r="1.3"/><circle cx="3.5" cy="18" r="1.3"/></svg>', count: () => tasks.filter(t => t.status === "needs_follow_up").length },
+  { id: "rules",      label: "Follow-up Rules",   icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>' },
+  { id: "integrations", label: "Integrations",    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/></svg>' },
+  { id: "log",        label: "Activity Log",      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>' },
+];
+function route(view, task) {
+  currentView = view; if (task !== undefined) currentTask = task;
+  $("#nav").innerHTML = NAV.map(n => `
+    <button class="nav-item ${n.id === (view === "detail" ? "list" : view) ? "active" : ""}" onclick="route('${n.id}')">
+      ${n.icon}<span>${n.label}</span>${n.count ? `<span class="count">${n.count()}</span>` : ""}
+    </button>`).join("");
+  const M = { dashboard: renderDashboard, list: renderList, detail: renderDetail, rules: renderRules, integrations: renderIntegrations, log: renderLog };
+  (M[view] || renderDashboard)();
+  window.scrollTo(0, 0);
+}
+
+/* ============================================================
+   VIEW: DASHBOARD
+   ============================================================ */
+function renderDashboard() {
+  const nf = tasks.filter(t => t.status === "needs_follow_up");
+  const dr = tasks.filter(t => t.status === "draft_ready");
+  const mf = tasks.filter(t => t.status === "marked_followed_up" && t.lastFollowedUpAt && (Date.now() - t.lastFollowedUpAt.getTime()) < 7 * 864e5);
+  const rows = nf.concat(tasks.filter(t => t.status === "draft_ready")).map(t => {
+    const j = jobs.find(x => x.uuid === t.jobUuid), c = companyOf(j);
+    const sent = parseStamp(j.quote_sent_stamp);
+    return `<tr onclick="route('detail', tasks.find(x=>x.id==='${t.id}'))">
+      <td><div class="client-name">${esc(c.name)}</div><div class="job-id">${j.generated_job_id}</div></td>
+      <td><div>${esc(j.job_description)}</div></td>
+      <td class="money">${money(jobTotal(j))} <small>ex GST</small></td>
+      <td><span class="badge b-amber">${sent ? daysSince(sent) : "?"} days</span></td>
+      <td style="max-width:230px"><div class="muted">${esc(t.trigger)}</div></td>
+      <td><span class="badge ${STATUS_META[t.status].cls}">${STATUS_META[t.status].label}</span></td>
+    </tr>`;
+  }).join("");
+  $("#main").innerHTML = `
+    <div class="page-head">
+      <div><h1>Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}, Sam</h1>
+      <div class="page-sub">${nf.length} quotes are waiting on a client reply — ${dr.length} draft${dr.length === 1 ? "" : "s"} ready for review.</div></div>
+      <button class="btn btn-primary" onclick="route('list')">Review follow-ups</button>
+    </div>
+    <div class="stats">
+      <div class="stat amber"><div class="num">${nf.length}</div><div class="lbl">Quotes to follow up</div></div>
+      <div class="stat blue"><div class="num">${dr.length}</div><div class="lbl">Drafts awaiting review</div></div>
+      <div class="stat green"><div class="num">${mf.length}</div><div class="lbl">Followed up this week</div></div>
+      <div class="stat"><div class="num" style="font-size:20px;padding-top:4px"><span class="badge b-green">● Connected</span></div><div class="lbl">ServiceM8 · synced ${12} min ago</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Needs attention</div><button class="btn btn-ghost btn-sm" onclick="doSync(this)">Sync now</button></div>
+      <table><thead><tr><th>Client</th><th>Service</th><th>Quote amount</th><th>Sent</th><th>Trigger</th><th>Status</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="6"><div class="empty"><div class="big">All caught up 🎉</div>No quotes need following up right now.</div></td></tr>`}</tbody></table>
+    </div>`;
+}
+
+/* ============================================================
+   VIEW: LIST
+   ============================================================ */
+const FILTERS = [
+  { id: "needs_follow_up", label: "Needs follow-up" }, { id: "draft_ready", label: "Draft ready" },
+  { id: "marked_followed_up", label: "Followed up" }, { id: "excluded", label: "Excluded" },
+  { id: "needs_review", label: "Needs review" }, { id: "all", label: "All" },
+];
+let searchTerm = "";
+function renderList() {
+  const rows = tasks.filter(t => (listFilter === "all" || t.status === listFilter)).filter(t => {
+    if (!searchTerm) return true;
+    const j = jobs.find(x => x.uuid === t.jobUuid);
+    return (companyOf(j).name + " " + j.generated_job_id + " " + j.job_description).toLowerCase().includes(searchTerm.toLowerCase());
+  }).sort((a, b) => {
+    const ja = jobs.find(x => x.uuid === a.jobUuid), jb = jobs.find(x => x.uuid === b.jobUuid);
+    return (parseStamp(ja.quote_sent_stamp)?.getTime() || 0) - (parseStamp(jb.quote_sent_stamp)?.getTime() || 0);
+  }).map(t => {
+    const j = jobs.find(x => x.uuid === t.jobUuid), c = companyOf(j);
+    const sent = parseStamp(j.quote_sent_stamp);
+    const draft = t.drafts[t.drafts.length - 1];
+    return `<tr onclick="route('detail', tasks.find(x=>x.id==='${t.id}'))">
+      <td><div class="client-name">${esc(c.name)}</div><div class="job-id">${j.generated_job_id}</div></td>
+      <td><div>${esc(j.job_description)}</div></td>
+      <td class="money">${money(jobTotal(j))} <small>ex GST</small></td>
+      <td>${sent ? fmtDate(sent) : '<span class="muted" title="zero-date in source data">—</span>'}</td>
+      <td>${sent ? `<span class="badge ${daysSince(sent) >= settings.threshold ? "b-amber" : "b-gray"}">${daysSince(sent)} days</span>` : '<span class="badge b-red">invalid</span>'}</td>
+      <td><span class="badge ${STATUS_META[t.status].cls}">${STATUS_META[t.status].label}</span></td>
+      <td>${draft ? "✅ Saved" : t.status === "needs_follow_up" ? "—" : '<span class="muted">n/a</span>'}</td>
+    </tr>`;
+  }).join("");
+  $("#main").innerHTML = `
+    <div class="page-head"><div><h1>Quote Follow-ups</h1>
+    <div class="page-sub">Synced from ServiceM8 · threshold ${settings.threshold} days · amounts estimated from line items (ex GST)</div></div></div>
+    <div class="filters">
+      ${FILTERS.map(f => `<button class="chip ${listFilter === f.id ? "active" : ""}" onclick="setFilter('${f.id}')">${f.label}</button>`).join("")}
+      <div class="search">🔍<input placeholder="Search client, quote # or service" value="${esc(searchTerm)}" oninput="setSearch(this.value)"></div>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Client</th><th>Service</th><th>Amount</th><th>Sent</th><th>Waiting</th><th>Status</th><th>Draft</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="7"><div class="empty"><div class="big">Nothing here</div>No tasks match this filter.</div></td></tr>`}</tbody></table>
+    </div>`;
+}
+function setFilter(f) { listFilter = f; renderList(); }
+function setSearch(v) { searchTerm = v; renderList(); const inp = $(".search input"); inp.focus(); inp.setSelectionRange(v.length, v.length); }
+
+/* ============================================================
+   VIEW: DETAIL (Follow-up Workspace)
+   ============================================================ */
+function renderDetail() {
+  const t = currentTask; if (!t) return route("list");
+  const j = jobs.find(x => x.uuid === t.jobUuid), c = companyOf(j);
+  const sent = parseStamp(j.quote_sent_stamp);
+  const draft = t.drafts[t.drafts.length - 1];
+  const conflict = t.status === "needs_review";
+  const lines = (materials[j.uuid] || []).map(m => `<tr><td>${esc(m.name)}</td><td class="muted">${parseFloat(m.quantity)}</td><td class="muted">${money(m.displayed_amount)}</td></tr>`).join("");
+  const rawJson = JSON.stringify({ uuid: j.uuid, generated_job_id: j.generated_job_id, status: j.status, quote_sent: j.quote_sent, quote_sent_stamp: j.quote_sent_stamp, work_order_date: j.work_order_date, unsuccessful_date: j.unsuccessful_date, company_uuid: j.company_uuid }, null, 2);
+  const hist = t.history.concat([{ t: new Date(), ev: "task.viewed", detail: "Opened in workspace" }]).slice(-8).reverse().map(h => `<div class="history-item"><span class="t">${h.t.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span><span><b>${esc(h.ev.replace("task.", "").replace(/\./g, " "))}</b> — ${esc(h.detail)}</span></div>`).join("");
+  $("#main").innerHTML = `
+    <span class="back-link" onclick="route('list')">← All follow-ups</span>
+    <div class="page-head">
+      <div><h1>${esc(c.name)} <span class="job-id" style="font-size:15px">${j.generated_job_id}</span></h1>
+      <div class="page-sub">${esc(j.job_description)} · <span class="badge ${STATUS_META[t.status].cls}">${STATUS_META[t.status].label}</span></div></div>
+    </div>
+    ${conflict ? `<div class="reviewflag">⚠️ <div><b>Needs review — source data conflict.</b><br>${esc(t.trigger)}<br>Draft generation is disabled until a staff member confirms which field is correct.</div></div>` : ""}
+    <div class="detail-grid">
+      <div>
+        <div class="card panel">
+          <div class="section-lbl">AI follow-up draft</div>
+          <div id="draftArea">${draft ? draftEditor() : (conflict ? `<div class="generating" style="min-height:120px">🔒 Resolve the data conflict to enable draft generation</div>` : emptyDraft())}</div>
+          <div class="actions-row">
+            ${!conflict && !draft ? `<button class="btn btn-primary" id="genBtn" onclick="generateDraft()">✨ Generate draft</button>` : ""}
+            ${draft ? `<button class="btn btn-primary" onclick="copyDraft(this)">📋 Copy email</button>
+                       <button class="btn btn-ghost" onclick="saveDraft()">💾 Save edits</button>
+                       <button class="btn btn-ghost" onclick="regenerate()">🔄 Regenerate</button>` : ""}
+            ${t.status === "needs_follow_up" || t.status === "draft_ready" ? `<button class="btn btn-green-fill" style="background:var(--green);color:#fff" onclick="openMarkModal()">✓ Mark as followed up</button>
+                       <button class="btn btn-danger" onclick="openExcludeModal()">Ignore</button>` : ""}
+          </div>
+          <div class="muted" style="margin-top:12px">Copying does not send anything — paste the email in your own mail client. Marking as followed up is a manual confirmation, never an automatic send.</div>
+        </div>
+        <details class="raw"><summary>▸ Source data — ServiceM8 Job record (as returned by the API)</summary><pre>${esc(rawJson)}</pre></details>
+      </div>
+      <div>
+        <div class="card panel" style="margin-bottom:16px">
+          <div class="section-lbl">Quote</div>
+          <dl class="kv">
+            <dt>Quote amount</dt><dd>${money(jobTotal(j))} <small class="muted">(est. ex GST)</small></dd>
+            <dt>Sent</dt><dd>${sent ? fmtDate(sent) + " · " + daysSince(sent) + " days ago" : '<span class="badge b-red">zero-date</span>'}</dd>
+            <dt>ServiceM8 status</dt><dd><span class="badge b-gray">${j.status}</span></dd>
+            <dt>Trigger</dt><dd style="font-weight:500;font-size:12.5px">${esc(t.trigger)}</dd>
+          </dl>
+          ${lines ? `<div class="section-lbl" style="margin-top:16px">Line items</div>
+          <table style="font-size:12.5px"><tbody>${lines}<tr><td style="font-weight:650">Total (ex GST)</td><td></td><td class="money">${money(jobTotal(j))}</td></tr></tbody></table>` : '<div class="muted" style="margin-top:10px">No line items on this quote.</div>'}
+        </div>
+        <div class="card panel" style="margin-bottom:16px">
+          <div class="section-lbl">Client</div>
+          <dl class="kv">
+            <dt>Name</dt><dd>${esc(c.name)}</dd>
+            <dt>Type</dt><dd>${c.is_individual ? "Individual" : "Company"}</dd>
+            <dt>Address</dt><dd style="font-weight:500">${esc(c.address)}</dd>
+            <dt>ServiceM8 ID</dt><dd class="job-id">${j.company_uuid}</dd>
+          </dl>
+          <div class="muted" style="margin-top:10px">Recipient email is not read in v1 — staff send from their own mailbox.</div>
+        </div>
+        <div class="card panel">
+          <div class="section-lbl">History</div>${hist || '<div class="muted">No activity yet.</div>'}
+        </div>
+      </div>
+    </div>`;
+}
+function emptyDraft() {
+  return `<textarea class="draft-box" id="draftBody" placeholder="Click &quot;Generate draft&quot; — the AI drafts a follow-up email using only this quote's facts: client name, service, amount and date sent. It never invents prices, dates or promises." disabled></textarea>`;
+}
+function draftEditor() {
+  const d = currentTask.drafts[currentTask.drafts.length - 1];
+  return `<input class="draft-subject" id="draftSubject" value="${esc(d.subject)}">
+    <textarea class="draft-box" id="draftBody">${esc(d.body)}</textarea>
+    <div class="muted" style="margin-top:8px">Draft by ${d.model} · ${d.edited ? "edited by staff" : "unmodified AI output"} · tone: ${{ professional: "Professional & friendly", short: "Short & direct", warm: "Warm & conversational" }[settings.tone]}</div>`;
+}
+function draftFor(j) {
+  const c = companyOf(j), sent = parseStamp(j.quote_sent_stamp);
+  const name = c.is_individual ? c.name.split(" ")[0] : c.name + " team";
+  const subject = `Following up: Quote ${j.generated_job_id} — ${j.job_description}`;
+  const common = `Kind regards,\nSam Wilson\nTest Plumbing Co · 02 9000 1234`;
+  const bodies = {
+    professional: `Hi ${name},\n\nI hope this finds you well. I'm following up on the quote we sent on ${fmtDate(sent)} for ${j.job_description.toLowerCase()} (Quote ${j.generated_job_id}, ${money(jobTotal(j))} ex GST).\n\nIf anything in the quote needs clarifying — scope, timing or pricing — I'm happy to talk it through. Otherwise, let us know a date that suits and we'll lock it in.\n\n${common}`,
+    short: `Hi ${name},\n\nQuick follow-up on Quote ${j.generated_job_id} (${j.job_description.toLowerCase()}, ${money(jobTotal(j))} ex GST), sent ${fmtDate(sent)}.\n\nAny questions? Happy to book a time that suits.\n\n${common}`,
+    warm: `Hi ${name},\n\nJust checking in regarding the quote we emailed on ${fmtDate(sent)} for the ${j.job_description.toLowerCase()} — Quote ${j.generated_job_id} at ${money(jobTotal(j))} ex GST.\n\nNo rush at all if you're still thinking it over! If it's helpful, we can walk through the options or adjust the scope to fit your budget. Whenever you're ready, we'll find a day that works.\n\n${common}`,
+  };
+  return { subject, body: bodies[settings.tone] || bodies.professional };
+}
+async function generateDraft() {
+  const t = currentTask, j = jobs.find(x => x.uuid === t.jobUuid);
+  const btn = $("#genBtn"); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Generating…';
+  $("#draftArea").innerHTML = `<div class="generating"><div style="width:34px;height:34px;border-radius:50%;background:conic-gradient(from 0deg,#2563eb,#7c3aed,#2563eb);animation:spin 1s linear infinite"></div><div>Drafting a ${settings.tone === "short" ? "short, direct" : settings.tone === "warm" ? "warm, conversational" : "professional & friendly"} follow-up from quote facts…</div></div>`;
+  await new Promise(r => setTimeout(r, 1400));
+  const d = draftFor(j); d.model = "claude-sonnet-4.5"; d.createdAt = new Date(); d.edited = false;
+  t.drafts.push(d); t.status = "draft_ready"; t.history.push({ t: new Date(), ev: "draft.generated", detail: `AI draft generated · ${d.model}` });
+  logEvent("draft.generated", `${j.generated_job_id} draft generated (${settings.tone} tone)`);
+  saveState(); renderDetail(); toast("Draft generated — review before sending");
+}
+function saveDraft() {
+  const t = currentTask, d = t.drafts[t.drafts.length - 1];
+  d.subject = $("#draftSubject").value; d.body = $("#draftBody").value; d.edited = true;
+  t.history.push({ t: new Date(), ev: "draft.edited", detail: "Draft edited by staff" });
+  logEvent("draft.edited", `${jobs.find(x => x.uuid === t.jobUuid).generated_job_id} draft edited`);
+  saveState(); toast("Draft saved"); renderDetail();
+}
+async function copyDraft(btn) {
+  const t = currentTask, d = t.drafts[t.drafts.length - 1];
+  const text = `Subject: ${$("#draftSubject") ? $("#draftSubject").value : d.subject}\n\n${$("#draftBody") ? $("#draftBody").value : d.body}`;
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  t.history.push({ t: new Date(), ev: "draft.copied", detail: "Email copied to clipboard" });
+  logEvent("draft.copied", `${jobs.find(x => x.uuid === t.jobUuid).generated_job_id} email copied`);
+  saveState(); btn.innerHTML = "✅ Copied"; setTimeout(() => { btn.innerHTML = "📋 Copy email"; }, 1800);
+}
+async function regenerate() {
+  await generateDraft();
+}
+function openMarkModal() {
+  $("#modalRoot").innerHTML = `<div class="modal-mask" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>Mark as followed up</h3><p>This records who followed up and when. It never sends an email.</p>
+    <textarea id="markNote" rows="3" placeholder="Optional note — e.g. \"Called and left a message…\""></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="markFollowedUp()">Confirm</button></div></div></div>`;
+}
+function markFollowedUp() {
+  const t = currentTask, j = jobs.find(x => x.uuid === t.jobUuid);
+  t.status = "marked_followed_up"; t.lastFollowedUpAt = new Date(); t.followedNote = $("#markNote").value.trim();
+  t.history.push({ t: new Date(), ev: "task.marked_followed_up", detail: "By Sam W." + (t.followedNote ? " · " + t.followedNote : "") });
+  logEvent("task.marked_followed_up", `${j.generated_job_id} marked followed up by Sam W.`);
+  closeModal(); saveState(); renderDetail(); toast("Marked as followed up");
+}
+function openExcludeModal() {
+  $("#modalRoot").innerHTML = `<div class="modal-mask" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>Ignore this quote</h3><p>It will be excluded from follow-ups. Pick a reason for the audit trail.</p>
+    <select id="exclReason"><option>Client asked not to be contacted</option><option>Already followed up outside this tool</option><option>Quote is not relevant anymore</option><option>Other</option></select>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="excludeTask()">Ignore</button></div></div></div>`;
+}
+function excludeTask() {
+  const t = currentTask, j = jobs.find(x => x.uuid === t.jobUuid);
+  t.status = "excluded"; t.excludedAt = new Date(); t.excludeReason = $("#exclReason").value;
+  t.history.push({ t: new Date(), ev: "task.excluded", detail: t.excludeReason });
+  logEvent("task.excluded", `${j.generated_job_id} excluded — ${t.excludeReason}`);
+  closeModal(); saveState(); renderDetail(); toast("Quote excluded");
+}
+function closeModal() { $("#modalRoot").innerHTML = ""; }
+
+/* ============================================================
+   VIEW: RULES
+   ============================================================ */
+function renderRules() {
+  $("#main").innerHTML = `
+    <div class="page-head"><div><h1>Follow-up Rules</h1><div class="page-sub">Deterministic rules decide which quotes need follow-up — the AI only writes the email, it never decides.</div></div></div>
+    <div class="rules-grid">
+      <div class="card panel">
+        <div class="section-lbl">Follow-up threshold</div>
+        <div style="display:flex;align-items:center;gap:14px"><span class="threshold-val" id="thVal">${settings.threshold}</span><span class="muted">business days after quote sent</span></div>
+        <input type="range" min="1" max="14" value="${settings.threshold}" oninput="$('#thVal').textContent=this.value" onchange="setThreshold(this.value)">
+        <div class="muted">A quote enters <b>Needs follow-up</b> ${settings.threshold}+ days after sending, if it is still unanswered.</div>
+      </div>
+      <div class="card panel">
+        <div class="section-lbl">Email tone</div>
+        ${[["professional", "Professional & friendly", "Balanced default — suits most trade clients."],
+           ["short", "Short & direct", "Two or three sentences. Gets to the point."],
+           ["warm", "Warm & conversational", "Relaxed and personable, for long-standing clients."]]
+          .map(([id, name, desc]) => `<label class="tone-opt ${settings.tone === id ? "sel" : ""}" onclick="setTone('${id}')"><span class="t-name">${name}</span><span class="t-desc">${desc}</span></label>`).join("")}
+      </div>
+      <div class="card panel">
+        <div class="section-lbl">Exclusions (mapped from ServiceM8 status)</div>
+        <span class="excl-tag">✅ Accepted → <span class="job-id">Work Order</span></span>
+        <span class="excl-tag">❌ Lost → <span class="job-id">Unsuccessful</span></span>
+        <span class="excl-tag">🏁 Done → <span class="job-id">Completed</span></span>
+        <span class="excl-tag">⏳ Expired → local rule (90 days, configurable)</span>
+        <div class="muted" style="margin-top:8px">Conflicting or missing source data (e.g. sent-flag without a timestamp) goes to <b>Needs review</b>, never auto-excluded.</div>
+      </div>
+      <div class="card panel">
+        <div class="section-lbl">Approval policy</div>
+        <div class="sync-line"><span>Human review required before any email leaves</span><span class="badge b-green">Always on</span></div>
+        <div class="sync-line"><span>Automatic sending</span><span class="badge b-gray">Not available in v1</span></div>
+        <div class="muted" style="margin-top:8px">Staff copy the approved draft into their own mailbox — QuoteFollow never sends on your behalf in the first release.</div>
+      </div>
+    </div>`;
+}
+function setThreshold(v) { settings.threshold = +v; saveState(); toast("Threshold updated — applies at next sync"); renderRules(); }
+function setTone(id) { settings.tone = id; saveState(); renderRules(); }
+
+/* ============================================================
+   VIEW: INTEGRATIONS
+   ============================================================ */
+async function doSync(btn) {
+  const label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spin" style="border-color:#c7d2fe;border-top-color:#2563eb"></span> Syncing…';
+  const steps = ["Connecting to ServiceM8…", "Fetching jobs (cursor page 1)…", "Fetching clients…", "Normalising & de-duplicating…", "Applying follow-up rules…"];
+  let host = $("#main");
+  for (let i = 0; i < steps.length; i++) {
+    if (btn.closest(".card") && host.querySelector(".card-head .btn")) { btn.innerHTML = steps[i]; }
+    await new Promise(r => setTimeout(r, 520));
+  }
+  connection.lastSync = new Date();
+  logEvent("sync.completed", "Manual sync · 11 jobs, 6 clients · 3 tasks updated · 0 errors");
+  saveState(); btn.disabled = false; btn.innerHTML = label;
+  toast("Sync complete — 11 jobs, 6 clients, 0 errors");
+  if (currentView === "dashboard") renderDashboard();
+}
+async function testConnection(btn) {
+  btn.disabled = true; btn.innerHTML = '<span class="spin" style="border-color:#c7d2fe;border-top-color:#2563eb"></span> Testing…';
+  await new Promise(r => setTimeout(r, 1100));
+  btn.disabled = false; btn.innerHTML = "✅ Connected";
+  logEvent("integration.tested", "Connection test passed (87 ms)");
+  saveState(); toast("Connection healthy — 87 ms");
+}
+function renderIntegrations() {
+  const conn = connection.status === "connected";
+  $("#main").innerHTML = `
+    <div class="page-head"><div><h1>Integrations</h1><div class="page-sub">QuoteFollow reads your ServiceM8 data — nothing is ever written back.</div></div></div>
+    <div class="card panel" style="max-width:640px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div style="width:44px;height:44px;border-radius:10px;background:#0e9572;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px">M8</div>
+        <div style="flex:1"><div style="font-weight:700;font-size:15px">ServiceM8</div><div class="muted">Jobs · Clients · Line items</div></div>
+        <span class="badge ${conn ? "b-green" : "b-red"}">${conn ? "● Connected" : "Disconnected"}</span>
+      </div>
+      <div class="sync-line"><span>Authorisation mode</span><span><b>${connection.mode}</b></span></div>
+      <div class="sync-line"><span>Connected since</span><span>${fmtDate(connection.since)}</span></div>
+      <div class="sync-line"><span>Last successful sync</span><span>${fmtDateTime(connection.lastSync)}</span></div>
+      <div class="sync-line"><span>Read scope</span><span class="badge b-blue">read_jobs · read_customers · read_job_materials</span></div>
+      <div class="sync-line"><span>Write access</span><span class="badge b-gray">none — read-only by design</span></div>
+      <div class="actions-row">
+        <button class="btn btn-ghost" onclick="testConnection(this)">Test connection</button>
+        <button class="btn btn-primary" onclick="doSync(this)">Sync now</button>
+        <button class="btn btn-danger" onclick="disconnect()">Disconnect</button>
+      </div>
+      <div class="muted" style="margin-top:12px">Multi-tenant note: each customer's credentials are isolated per tenant — this demo shows a single pilot tenant.</div>
+    </div>`;
+}
+function disconnect() {
+  $("#modalRoot").innerHTML = `<div class="modal-mask" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>Disconnect ServiceM8?</h3><p>Sync stops and stored credentials are deleted. Existing quotes stay visible but stop updating.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="doDisconnect()">Disconnect</button></div></div></div>`;
+}
+function doDisconnect() {
+  connection.status = "disconnected"; logEvent("integration.disconnected", "ServiceM8 disconnected by admin");
+  saveState(); closeModal(); renderIntegrations(); $("#connText").textContent = "ServiceM8 · Disconnected"; $("#connDot").style.background = "var(--red)";
+}
+
+/* ============================================================
+   VIEW: ACTIVITY LOG
+   ============================================================ */
+function renderLog() {
+  $("#main").innerHTML = `
+    <div class="page-head"><div><h1>Activity Log</h1><div class="page-sub">Audit trail — credentials and email contents are never logged.</div></div></div>
+    <div class="card panel" style="max-width:840px">
+      ${logs.map(l => `<div class="log-row"><span class="log-time">${l.t.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", second: "2-digit" })}</span><span class="log-ev">${esc(l.ev)}</span><span>${esc(l.detail)}</span></div>`).join("")}
+    </div>`;
+}
+
+if (!loadState()) { seedState(); saveState(); }
+route("dashboard");
+</script>
+</body>
+</html>
