@@ -282,7 +282,7 @@ function loadState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return false;
-    const s = JSON.parse(raw);
+    const s = JSON.parse(raw, reviver);
     tasks = s.tasks; logs = s.logs; settings = s.settings; connection = s.connection;
     return true;
   } catch (e) { return false; }
@@ -297,8 +297,9 @@ const companyOf = j => companies.find(c => c.uuid === j.company_uuid);
 const taskOf = j => tasks.find(t => t.jobUuid === j.uuid);
 const money = v => "A$" + Number(v).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const jobTotal = j => (materials[j.uuid] || []).reduce((s, m) => s + parseFloat(m.quantity) * parseFloat(m.displayed_amount), 0);
-const fmtDate = d => d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
-const fmtDateTime = d => d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }) + ", " + d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+const toDate = v => v instanceof Date ? v : new Date(v);
+const fmtDate = d => toDate(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const fmtDateTime = d => { const x = toDate(d); return x.toLocaleDateString("en-AU", { day: "numeric", month: "short" }) + ", " + x.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }); };
 const parseStamp = s => s && !s.startsWith("0000") ? new Date(s.replace(" ", "T")) : null;
 const daysSince = d => Math.floor((Date.now() - d.getTime()) / 864e5);
 function toast(msg) {
@@ -342,7 +343,7 @@ function route(view, task) {
 function renderDashboard() {
   const nf = tasks.filter(t => t.status === "needs_follow_up");
   const dr = tasks.filter(t => t.status === "draft_ready");
-  const mf = tasks.filter(t => t.status === "marked_followed_up" && t.lastFollowedUpAt && (Date.now() - t.lastFollowedUpAt.getTime()) < 7 * 864e5);
+  const mf = tasks.filter(t => t.status === "marked_followed_up" && t.lastFollowedUpAt && (Date.now() - toDate(t.lastFollowedUpAt).getTime()) < 7 * 864e5);
   const rows = nf.concat(tasks.filter(t => t.status === "draft_ready")).map(t => {
     const j = jobs.find(x => x.uuid === t.jobUuid), c = companyOf(j);
     const sent = parseStamp(j.quote_sent_stamp);
